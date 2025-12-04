@@ -51,10 +51,35 @@ const transcriptionSchema = new Schema<ITranscription>({
       message: 'Language must be in format xx-XX (e.g., en-US, fr-FR)'
     }
   },
+  workflowStatus: {
+    type: String,
+    enum: ['transcription', 'review', 'approval', 'completed', 'rejected'],
+    default: 'transcription'
+  },
+  workflowHistory: [{
+    status: {
+      type: String,
+      required: true
+    },
+    timestamp: {
+      type: Date,
+      required: true,
+      default: Date.now
+    },
+    comment: {
+      type: String
+    },
+    reviewedBy: {
+      type: String
+    }
+  }],
   createdAt: {
     type: Date,
     default: Date.now,
     index: true // Index for efficient querying
+  },
+  updatedAt: {
+    type: Date
   }
 });
 

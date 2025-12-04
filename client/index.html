@@ -6,121 +6,345 @@
     <title>Audio Transcription API - Frontend</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <style>
+        .tab-button {
+            @apply flex-1 px-4 py-2 text-sm font-medium text-gray-600 rounded-md transition-colors duration-200 hover:text-gray-800;
+        }
+        .tab-button.active {
+            @apply bg-blue-500 text-white shadow-sm;
+        }
+        .tab-content {
+            @apply transition-opacity duration-200;
+        }
+        .status-badge {
+            @apply inline-block w-3 h-3 rounded-full;
+        }
+        .status-transcription { @apply bg-yellow-400; }
+        .status-review { @apply bg-orange-400; }
+        .status-approval { @apply bg-blue-400; }
+        .status-completed { @apply bg-green-400; }
+        .status-rejected { @apply bg-red-400; }
+    </style>
 </head>
 <body class="bg-gray-50 min-h-screen">
-    <div class="container mx-auto px-4 py-8 max-w-4xl">
+    <div class="container mx-auto px-4 py-8 max-w-7xl">
         <!-- Header -->
         <header class="text-center mb-8">
             <h1 class="text-4xl font-bold text-gray-800 mb-2">🎵 Audio Transcription API</h1>
-            <p class="text-gray-600">Test the transcription API endpoints</p>
+            <p class="text-gray-600">Test the transcription API endpoints and workflow engine</p>
         </header>
+
+        <!-- Navigation Tabs -->
+        <div class="mb-8">
+            <nav class="flex space-x-1 bg-white rounded-lg p-1 shadow">
+                <button id="tab-transcription" class="tab-button active" onclick="showTab('transcription')">
+                    📝 Transcription
+                </button>
+                <button id="tab-workflow" class="tab-button" onclick="showTab('workflow')">
+                    🔄 Workflow Engine
+                </button>
+                <button id="tab-statistics" class="tab-button" onclick="showTab('statistics')">
+                    📊 Statistics
+                </button>
+            </nav>
+        </div>
 
         <!-- Status Messages -->
         <div id="statusMessage" class="mb-6 hidden">
             <div id="statusContent" class="p-4 rounded-lg"></div>
         </div>
 
-        <!-- Main Content -->
-        <div class="grid md:grid-cols-2 gap-8">
-            <!-- Left Column: Create Transcription -->
-            <div class="bg-white rounded-lg shadow-lg p-6">
-                <h2 class="text-2xl font-semibold text-gray-800 mb-4">🎵 Create Transcription</h2>
-                
-                <!-- Audio URL Input -->
-                <div class="mb-4">
-                    <label for="audioUrl" class="block text-sm font-medium text-gray-700 mb-2">Audio URL</label>
-                    <input 
-                        type="url" 
-                        id="audioUrl" 
-                        placeholder="https://example.com/sample.mp3"
-                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        value="https://example.com/sample.mp3"
-                    />
-                </div>
-
-                <!-- Language Selection -->
-                <div class="mb-4">
-                    <label for="language" class="block text-sm font-medium text-gray-700 mb-2">Language</label>
-                    <select 
-                        id="language" 
-                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                        <option value="en-US">🇺🇸 English (US)</option>
-                        <option value="fr-FR">🇫🇷 French (France)</option>
-                        <option value="es-ES">🇪🇸 Spanish (Spain)</option>
-                        <option value="de-DE">🇩🇪 German (Germany)</option>
-                        <option value="it-IT">🇮🇹 Italian (Italy)</option>
-                        <option value="pt-BR">🇧🇷 Portuguese (Brazil)</option>
-                        <option value="ja-JP">🇯🇵 Japanese (Japan)</option>
-                        <option value="ko-KR">🇰🇷 Korean (South Korea)</option>
-                        <option value="zh-CN">🇨🇳 Chinese (China)</option>
-                    </select>
-                </div>
-
-                <!-- Buttons -->
-                <div class="space-y-3">
-                    <button 
-                        onclick="createMockTranscription()" 
-                        class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md transition duration-200"
-                    >
-                        🎯 Create Mock Transcription
-                    </button>
+        <!-- Transcription Tab -->
+        <div id="content-transcription" class="tab-content">
+            <div class="grid md:grid-cols-2 gap-8">
+                <!-- Left Column: Create Transcription -->
+                <div class="bg-white rounded-lg shadow-lg p-6">
+                    <h2 class="text-2xl font-semibold text-gray-800 mb-4">🎵 Create Transcription</h2>
                     
-                    <button 
-                        onclick="createAzureTranscription()" 
-                        class="w-full bg-purple-600 hover:bg-purple-700 text-white font-medium py-2 px-4 rounded-md transition duration-200"
-                    >
-                        ☁️ Create Azure Transcription
-                    </button>
-                </div>
+                    <!-- Audio URL Input -->
+                    <div class="mb-4">
+                        <label for="audioUrl" class="block text-sm font-medium text-gray-700 mb-2">Audio URL</label>
+                        <input 
+                            type="url" 
+                            id="audioUrl" 
+                            placeholder="https://example.com/sample.mp3"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            value="https://example.com/sample.mp3"
+                        />
+                    </div>
 
-                <!-- Recent Result -->
-                <div id="recentResult" class="mt-6 hidden">
-                    <h3 class="text-lg font-semibold text-gray-800 mb-2">📄 Recent Result</h3>
-                    <div id="resultContent" class="bg-gray-50 p-3 rounded border text-sm"></div>
-                </div>
-            </div>
-
-            <!-- Right Column: View Transcriptions -->
-            <div class="bg-white rounded-lg shadow-lg p-6">
-                <div class="flex justify-between items-center mb-4">
-                    <h2 class="text-2xl font-semibold text-gray-800">📊 Recent Transcriptions</h2>
-                    <button 
-                        onclick="loadTranscriptions()" 
-                        class="bg-green-600 hover:bg-green-700 text-white font-medium py-1 px-3 rounded text-sm transition duration-200"
-                    >
-                        🔄 Refresh
-                    </button>
-                </div>
-
-                <!-- Transcriptions List -->
-                <div id="transcriptionsList" class="space-y-3 max-h-96 overflow-y-auto">
-                    <p class="text-gray-500 text-center py-4">Click refresh to load transcriptions</p>
-                </div>
-
-                <!-- Pagination -->
-                <div id="pagination" class="mt-4 flex justify-between items-center text-sm text-gray-600 hidden">
-                    <div id="paginationInfo"></div>
-                    <div class="space-x-2">
-                        <button 
-                            id="prevPage" 
-                            onclick="changePage(-1)" 
-                            class="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50"
+                    <!-- Language Selection -->
+                    <div class="mb-4">
+                        <label for="language" class="block text-sm font-medium text-gray-700 mb-2">Language</label>
+                        <select 
+                            id="language" 
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                         >
-                            Previous
-                        </button>
+                            <option value="en-US">🇺🇸 English (US)</option>
+                            <option value="fr-FR">🇫🇷 French (France)</option>
+                            <option value="es-ES">🇪🇸 Spanish (Spain)</option>
+                            <option value="de-DE">🇩🇪 German (Germany)</option>
+                            <option value="it-IT">🇮🇹 Italian (Italy)</option>
+                            <option value="pt-BR">🇧🇷 Portuguese (Brazil)</option>
+                            <option value="ja-JP">🇯🇵 Japanese (Japan)</option>
+                            <option value="ko-KR">🇰🇷 Korean (South Korea)</option>
+                            <option value="zh-CN">🇨🇳 Chinese (China)</option>
+                        </select>
+                    </div>
+
+                    <!-- Buttons -->
+                    <div class="space-y-3">
                         <button 
-                            id="nextPage" 
-                            onclick="changePage(1)" 
-                            class="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50"
+                            onclick="createMockTranscription()" 
+                            class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md transition duration-200"
                         >
-                            Next
+                            🎯 Create Mock Transcription
                         </button>
+                        
+                        <button 
+                            onclick="createAzureTranscription()" 
+                            class="w-full bg-purple-600 hover:bg-purple-700 text-white font-medium py-2 px-4 rounded-md transition duration-200"
+                        >
+                            ☁️ Create Azure Transcription
+                        </button>
+                    </div>
+
+                    <!-- Recent Result -->
+                    <div id="recentResult" class="mt-6 hidden">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-2">📄 Recent Result</h3>
+                        <div id="resultContent" class="bg-gray-50 p-3 rounded border text-sm"></div>
+                    </div>
+                </div>
+
+                <!-- Right Column: View Transcriptions -->
+                <div class="bg-white rounded-lg shadow-lg p-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-2xl font-semibold text-gray-800">📊 Recent Transcriptions</h2>
+                        <button 
+                            onclick="loadTranscriptions()" 
+                            class="bg-green-600 hover:bg-green-700 text-white font-medium py-1 px-3 rounded text-sm transition duration-200"
+                        >
+                            🔄 Refresh
+                        </button>
+                    </div>
+
+                    <!-- Transcriptions List -->
+                    <div id="transcriptionsList" class="space-y-3 max-h-96 overflow-y-auto">
+                        <p class="text-gray-500 text-center py-4">Click refresh to load transcriptions</p>
+                    </div>
+
+                    <!-- Pagination -->
+                    <div id="pagination" class="mt-4 flex justify-between items-center text-sm text-gray-600 hidden">
+                        <div id="paginationInfo"></div>
+                        <div class="space-x-2">
+                            <button 
+                                id="prevPage" 
+                                onclick="changePage(-1)" 
+                                class="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50"
+                            >
+                                Previous
+                            </button>
+                            <button 
+                                id="nextPage" 
+                                onclick="changePage(1)" 
+                                class="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50"
+                            >
+                                Next
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
 
+        <!-- Workflow Tab -->
+        <div id="content-workflow" class="tab-content hidden">
+            <div class="grid lg:grid-cols-3 gap-8">
+                <!-- Left Column: Create Workflow -->
+                <div class="bg-white rounded-lg shadow-lg p-6">
+                    <h2 class="text-2xl font-semibold text-gray-800 mb-4">🚀 Create Workflow</h2>
+                    
+                    <!-- Audio URL Input -->
+                    <div class="mb-4">
+                        <label for="workflowAudioUrl" class="block text-sm font-medium text-gray-700 mb-2">Audio URL</label>
+                        <input 
+                            type="url" 
+                            id="workflowAudioUrl" 
+                            placeholder="https://example.com/workflow-audio.mp3"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                            value="https://example.com/workflow-demo.mp3"
+                        />
+                    </div>
+
+                    <!-- Language Selection -->
+                    <div class="mb-4">
+                        <label for="workflowLanguage" class="block text-sm font-medium text-gray-700 mb-2">Language</label>
+                        <select 
+                            id="workflowLanguage" 
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                        >
+                            <option value="en-US">🇺🇸 English (US)</option>
+                            <option value="fr-FR">🇫🇷 French (France)</option>
+                            <option value="es-ES">🇪🇸 Spanish (Spain)</option>
+                        </select>
+                    </div>
+
+                    <!-- Create Workflow Button -->
+                    <button 
+                        onclick="createWorkflow()" 
+                        class="w-full bg-purple-600 hover:bg-purple-700 text-white font-medium py-2 px-4 rounded-md transition duration-200 mb-4"
+                    >
+                        🔄 Start New Workflow
+                    </button>
+
+                    <!-- Workflow Status Legend -->
+                    <div class="bg-gray-50 p-4 rounded-lg">
+                        <h3 class="text-sm font-semibold text-gray-700 mb-2">Workflow States</h3>
+                        <div class="space-y-2 text-sm">
+                            <div class="flex items-center">
+                                <span class="status-badge status-transcription mr-2"></span>
+                                Transcription
+                            </div>
+                            <div class="flex items-center">
+                                <span class="status-badge status-review mr-2"></span>
+                                Review
+                            </div>
+                            <div class="flex items-center">
+                                <span class="status-badge status-approval mr-2"></span>
+                                Approval
+                            </div>
+                            <div class="flex items-center">
+                                <span class="status-badge status-completed mr-2"></span>
+                                Completed
+                            </div>
+                            <div class="flex items-center">
+                                <span class="status-badge status-rejected mr-2"></span>
+                                Rejected
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Middle Column: Workflow List -->
+                <div class="bg-white rounded-lg shadow-lg p-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-2xl font-semibold text-gray-800">🔄 Active Workflows</h2>
+                        <button 
+                            onclick="loadWorkflows()" 
+                            class="bg-purple-600 hover:bg-purple-700 text-white font-medium py-1 px-3 rounded text-sm transition duration-200"
+                        >
+                            🔄 Refresh
+                        </button>
+                    </div>
+
+                    <!-- Status Filter -->
+                    <div class="mb-4">
+                        <select 
+                            id="statusFilter" 
+                            onchange="loadWorkflows()"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                        >
+                            <option value="">All Status</option>
+                            <option value="transcription">Transcription</option>
+                            <option value="review">Review</option>
+                            <option value="approval">Approval</option>
+                            <option value="completed">Completed</option>
+                            <option value="rejected">Rejected</option>
+                        </select>
+                    </div>
+
+                    <!-- Workflows List -->
+                    <div id="workflowsList" class="space-y-3 max-h-96 overflow-y-auto">
+                        <p class="text-gray-500 text-center py-4">Click refresh to load workflows</p>
+                    </div>
+                </div>
+
+                <!-- Right Column: Workflow Details -->
+                <div class="bg-white rounded-lg shadow-lg p-6">
+                    <h2 class="text-2xl font-semibold text-gray-800 mb-4">📋 Workflow Details</h2>
+                    
+                    <div id="workflowDetails" class="space-y-4">
+                        <p class="text-gray-500 text-center py-8">Select a workflow to view details</p>
+                    </div>
+
+                    <!-- Manual Transition Controls -->
+                    <div id="transitionControls" class="mt-6 hidden">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-3">Manual Transition</h3>
+                        <div class="space-y-3">
+                            <div>
+                                <label for="newStatus" class="block text-sm font-medium text-gray-700 mb-1">New Status</label>
+                                <select id="newStatus" class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm">
+                                    <option value="">Select status...</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="transitionComment" class="block text-sm font-medium text-gray-700 mb-1">Comment</label>
+                                <textarea 
+                                    id="transitionComment" 
+                                    placeholder="Optional comment..."
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm resize-none"
+                                    rows="2"
+                                ></textarea>
+                            </div>
+                            <div>
+                                <label for="reviewedBy" class="block text-sm font-medium text-gray-700 mb-1">Reviewed By</label>
+                                <input 
+                                    type="text" 
+                                    id="reviewedBy" 
+                                    placeholder="Your name"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                                    value="Demo User"
+                                />
+                            </div>
+                            <button 
+                                onclick="transitionWorkflow()" 
+                                class="w-full bg-orange-600 hover:bg-orange-700 text-white font-medium py-2 px-4 rounded-md transition duration-200"
+                            >
+                                ⚡ Apply Transition
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Statistics Tab -->
+        <div id="content-statistics" class="tab-content hidden">
+            <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                <!-- Workflow Stats Cards -->
+                <div class="bg-white rounded-lg shadow-lg p-6 text-center">
+                    <div class="text-3xl font-bold text-yellow-600" id="stat-transcription">-</div>
+                    <div class="text-sm text-gray-600 mt-1">Transcription</div>
+                </div>
+                <div class="bg-white rounded-lg shadow-lg p-6 text-center">
+                    <div class="text-3xl font-bold text-orange-600" id="stat-review">-</div>
+                    <div class="text-sm text-gray-600 mt-1">Review</div>
+                </div>
+                <div class="bg-white rounded-lg shadow-lg p-6 text-center">
+                    <div class="text-3xl font-bold text-blue-600" id="stat-approval">-</div>
+                    <div class="text-sm text-gray-600 mt-1">Approval</div>
+                </div>
+                <div class="bg-white rounded-lg shadow-lg p-6 text-center">
+                    <div class="text-3xl font-bold text-green-600" id="stat-completed">-</div>
+                    <div class="text-sm text-gray-600 mt-1">Completed</div>
+                </div>
+            </div>
+            
+            <div class="bg-white rounded-lg shadow-lg p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-2xl font-semibold text-gray-800">📊 Workflow Statistics</h2>
+                    <button 
+                        onclick="loadStatistics()" 
+                        class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-1 px-3 rounded text-sm transition duration-200"
+                    >
+                        🔄 Refresh
+                    </button>
+                </div>
+                <div id="statisticsContent">
+                    <p class="text-gray-500 text-center py-8">Click refresh to load statistics</p>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -128,6 +352,33 @@
         const API_BASE_URL = 'http://localhost:3001';
         let currentPage = 1;
         let totalPages = 1;
+        let selectedWorkflowId = null;
+
+        // Tab Management
+        function showTab(tabName) {
+            // Hide all tab contents
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.add('hidden');
+            });
+            
+            // Remove active class from all tab buttons
+            document.querySelectorAll('.tab-button').forEach(button => {
+                button.classList.remove('active');
+            });
+            
+            // Show selected tab content
+            document.getElementById(`content-${tabName}`).classList.remove('hidden');
+            
+            // Add active class to selected tab button
+            document.getElementById(`tab-${tabName}`).classList.add('active');
+            
+            // Load data for the selected tab
+            if (tabName === 'workflow') {
+                loadWorkflows();
+            } else if (tabName === 'statistics') {
+                loadStatistics();
+            }
+        }
 
         // Utility Functions
         function showStatus(message, type = 'info') {
@@ -144,7 +395,6 @@
             statusContent.textContent = message;
             statusDiv.classList.remove('hidden');
             
-            // Auto-hide after 5 seconds
             setTimeout(() => {
                 statusDiv.classList.add('hidden');
             }, 5000);
@@ -154,7 +404,20 @@
             return new Date(dateString).toLocaleString();
         }
 
-        // API Functions
+        // Language code to flag/name mapping
+        const languageNames = {
+            'en-US': '🇺🇸 English',
+            'fr-FR': '🇫🇷 French', 
+            'es-ES': '🇪🇸 Spanish',
+            'de-DE': '🇩🇪 German',
+            'it-IT': '🇮🇹 Italian',
+            'pt-BR': '🇧🇷 Portuguese',
+            'ja-JP': '🇯🇵 Japanese',
+            'ko-KR': '🇰🇷 Korean',
+            'zh-CN': '🇨🇳 Chinese'
+        };
+
+        // Transcription API Functions
         async function createMockTranscription() {
             const audioUrl = document.getElementById('audioUrl').value.trim();
             const language = document.getElementById('language').value;
@@ -170,7 +433,7 @@
                 
                 showStatus('Mock transcription created successfully!', 'success');
                 displayResult(response.data, 'Mock Transcription', language);
-                loadTranscriptions(); // Refresh the list
+                loadTranscriptions();
             } catch (error) {
                 const message = error.response?.data?.message || error.message;
                 showStatus(`Error: ${message}`, 'error');
@@ -192,7 +455,7 @@
                 
                 showStatus('Azure transcription created successfully!', 'success');
                 displayResult(response.data, 'Azure Transcription', language);
-                loadTranscriptions(); // Refresh the list
+                loadTranscriptions();
             } catch (error) {
                 const message = error.response?.data?.message || error.message;
                 showStatus(`Error: ${message}`, 'error');
@@ -213,20 +476,6 @@
             }
         }
 
-        // Language code to flag/name mapping
-        const languageNames = {
-            'en-US': '🇺🇸 English',
-            'fr-FR': '🇫🇷 French', 
-            'es-ES': '🇪🇸 Spanish',
-            'de-DE': '🇩🇪 German',
-            'it-IT': '🇮🇹 Italian',
-            'pt-BR': '🇧🇷 Portuguese',
-            'ja-JP': '🇯🇵 Japanese',
-            'ko-KR': '🇰🇷 Korean',
-            'zh-CN': '🇨🇳 Chinese'
-        };
-
-        // Display Functions
         function displayResult(result, type, language) {
             const resultDiv = document.getElementById('recentResult');
             const resultContent = document.getElementById('resultContent');
@@ -300,5 +549,6 @@
             }
         }
     </script>
+    <script src="workflow-ui.js"></script>
 </body>
 </html>

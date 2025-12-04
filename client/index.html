@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audio Transcription API - Frontend</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <div class="container mx-auto px-4 py-8 max-w-4xl">
+        <!-- Header -->
+        <header class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-gray-800 mb-2">🎵 Audio Transcription API</h1>
+            <p class="text-gray-600">Test the transcription API endpoints</p>
+        </header>
+
+        <!-- Status Messages -->
+        <div id="statusMessage" class="mb-6 hidden">
+            <div id="statusContent" class="p-4 rounded-lg"></div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="grid md:grid-cols-2 gap-8">
+            <!-- Left Column: Create Transcription -->
+            <div class="bg-white rounded-lg shadow-lg p-6">
+                <h2 class="text-2xl font-semibold text-gray-800 mb-4">🎵 Create Transcription</h2>
+                
+                <!-- Audio URL Input -->
+                <div class="mb-4">
+                    <label for="audioUrl" class="block text-sm font-medium text-gray-700 mb-2">Audio URL</label>
+                    <input 
+                        type="url" 
+                        id="audioUrl" 
+                        placeholder="https://example.com/sample.mp3"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        value="https://example.com/sample.mp3"
+                    />
+                </div>
+
+                <!-- Language Selection -->
+                <div class="mb-4">
+                    <label for="language" class="block text-sm font-medium text-gray-700 mb-2">Language</label>
+                    <select 
+                        id="language" 
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                        <option value="en-US">🇺🇸 English (US)</option>
+                        <option value="fr-FR">🇫🇷 French (France)</option>
+                        <option value="es-ES">🇪🇸 Spanish (Spain)</option>
+                        <option value="de-DE">🇩🇪 German (Germany)</option>
+                        <option value="it-IT">🇮🇹 Italian (Italy)</option>
+                        <option value="pt-BR">🇧🇷 Portuguese (Brazil)</option>
+                        <option value="ja-JP">🇯🇵 Japanese (Japan)</option>
+                        <option value="ko-KR">🇰🇷 Korean (South Korea)</option>
+                        <option value="zh-CN">🇨🇳 Chinese (China)</option>
+                    </select>
+                </div>
+
+                <!-- Buttons -->
+                <div class="space-y-3">
+                    <button 
+                        onclick="createMockTranscription()" 
+                        class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md transition duration-200"
+                    >
+                        🎯 Create Mock Transcription
+                    </button>
+                    
+                    <button 
+                        onclick="createAzureTranscription()" 
+                        class="w-full bg-purple-600 hover:bg-purple-700 text-white font-medium py-2 px-4 rounded-md transition duration-200"
+                    >
+                        ☁️ Create Azure Transcription
+                    </button>
+                </div>
+
+                <!-- Recent Result -->
+                <div id="recentResult" class="mt-6 hidden">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-2">📄 Recent Result</h3>
+                    <div id="resultContent" class="bg-gray-50 p-3 rounded border text-sm"></div>
+                </div>
+            </div>
+
+            <!-- Right Column: View Transcriptions -->
+            <div class="bg-white rounded-lg shadow-lg p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-2xl font-semibold text-gray-800">📊 Recent Transcriptions</h2>
+                    <button 
+                        onclick="loadTranscriptions()" 
+                        class="bg-green-600 hover:bg-green-700 text-white font-medium py-1 px-3 rounded text-sm transition duration-200"
+                    >
+                        🔄 Refresh
+                    </button>
+                </div>
+
+                <!-- Transcriptions List -->
+                <div id="transcriptionsList" class="space-y-3 max-h-96 overflow-y-auto">
+                    <p class="text-gray-500 text-center py-4">Click refresh to load transcriptions</p>
+                </div>
+
+                <!-- Pagination -->
+                <div id="pagination" class="mt-4 flex justify-between items-center text-sm text-gray-600 hidden">
+                    <div id="paginationInfo"></div>
+                    <div class="space-x-2">
+                        <button 
+                            id="prevPage" 
+                            onclick="changePage(-1)" 
+                            class="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50"
+                        >
+                            Previous
+                        </button>
+                        <button 
+                            id="nextPage" 
+                            onclick="changePage(1)" 
+                            class="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50"
+                        >
+                            Next
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // Configuration
+        const API_BASE_URL = 'http://localhost:3001';
+        let currentPage = 1;
+        let totalPages = 1;
+
+        // Utility Functions
+        function showStatus(message, type = 'info') {
+            const statusDiv = document.getElementById('statusMessage');
+            const statusContent = document.getElementById('statusContent');
+            
+            const bgColor = {
+                success: 'bg-green-100 border-green-400 text-green-700',
+                error: 'bg-red-100 border-red-400 text-red-700',
+                info: 'bg-blue-100 border-blue-400 text-blue-700'
+            }[type] || 'bg-gray-100 border-gray-400 text-gray-700';
+            
+            statusContent.className = `p-4 rounded-lg border ${bgColor}`;
+            statusContent.textContent = message;
+            statusDiv.classList.remove('hidden');
+            
+            // Auto-hide after 5 seconds
+            setTimeout(() => {
+                statusDiv.classList.add('hidden');
+            }, 5000);
+        }
+
+        function formatDate(dateString) {
+            return new Date(dateString).toLocaleString();
+        }
+
+        // API Functions
+        async function createMockTranscription() {
+            const audioUrl = document.getElementById('audioUrl').value.trim();
+            const language = document.getElementById('language').value;
+            
+            if (!audioUrl) {
+                showStatus('Please enter an audio URL', 'error');
+                return;
+            }
+
+            try {
+                showStatus(`Creating mock transcription (${language})...`, 'info');
+                const response = await axios.post(`${API_BASE_URL}/transcription`, { audioUrl, language });
+                
+                showStatus('Mock transcription created successfully!', 'success');
+                displayResult(response.data, 'Mock Transcription', language);
+                loadTranscriptions(); // Refresh the list
+            } catch (error) {
+                const message = error.response?.data?.message || error.message;
+                showStatus(`Error: ${message}`, 'error');
+            }
+        }
+
+        async function createAzureTranscription() {
+            const audioUrl = document.getElementById('audioUrl').value.trim();
+            const language = document.getElementById('language').value;
+            
+            if (!audioUrl) {
+                showStatus('Please enter an audio URL', 'error');
+                return;
+            }
+
+            try {
+                showStatus(`Creating Azure transcription (${language})...`, 'info');
+                const response = await axios.post(`${API_BASE_URL}/azure-transcription`, { audioUrl, language });
+                
+                showStatus('Azure transcription created successfully!', 'success');
+                displayResult(response.data, 'Azure Transcription', language);
+                loadTranscriptions(); // Refresh the list
+            } catch (error) {
+                const message = error.response?.data?.message || error.message;
+                showStatus(`Error: ${message}`, 'error');
+            }
+        }
+
+        async function loadTranscriptions() {
+            try {
+                showStatus('Loading transcriptions...', 'info');
+                const response = await axios.get(`${API_BASE_URL}/transcriptions?page=${currentPage}&limit=5`);
+                
+                displayTranscriptions(response.data.data);
+                updatePagination(response.data.pagination);
+                showStatus('Transcriptions loaded successfully', 'success');
+            } catch (error) {
+                const message = error.response?.data?.message || error.message;
+                showStatus(`Error loading transcriptions: ${message}`, 'error');
+            }
+        }
+
+        // Language code to flag/name mapping
+        const languageNames = {
+            'en-US': '🇺🇸 English',
+            'fr-FR': '🇫🇷 French', 
+            'es-ES': '🇪🇸 Spanish',
+            'de-DE': '🇩🇪 German',
+            'it-IT': '🇮🇹 Italian',
+            'pt-BR': '🇧🇷 Portuguese',
+            'ja-JP': '🇯🇵 Japanese',
+            'ko-KR': '🇰🇷 Korean',
+            'zh-CN': '🇨🇳 Chinese'
+        };
+
+        // Display Functions
+        function displayResult(result, type, language) {
+            const resultDiv = document.getElementById('recentResult');
+            const resultContent = document.getElementById('resultContent');
+            
+            resultContent.innerHTML = `
+                <div class="space-y-2">
+                    <div><strong>Type:</strong> ${type}</div>
+                    <div><strong>Language:</strong> ${languageNames[language] || language || 'en-US'}</div>
+                    <div><strong>ID:</strong> ${result.id}</div>
+                    <div><strong>Message:</strong> ${result.message}</div>
+                    <div><strong>Timestamp:</strong> ${formatDate(new Date().toISOString())}</div>
+                </div>
+            `;
+            
+            resultDiv.classList.remove('hidden');
+        }
+
+        function displayTranscriptions(transcriptions) {
+            const listDiv = document.getElementById('transcriptionsList');
+            
+            if (!transcriptions || transcriptions.length === 0) {
+                listDiv.innerHTML = '<p class="text-gray-500 text-center py-4">No transcriptions found for the last 30 days</p>';
+                return;
+            }
+            
+            const html = transcriptions.map(t => `
+                <div class="border border-gray-200 rounded-lg p-3 hover:bg-gray-50">
+                    <div class="flex justify-between items-start mb-2">
+                        <div class="text-sm font-medium text-gray-800 truncate flex-1">${t.audioUrl}</div>
+                        <div class="flex items-center space-x-2">
+                            ${t.language ? `<span class="px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-700">${languageNames[t.language] || t.language}</span>` : ''}
+                            <span class="px-2 py-1 text-xs rounded-full ${t.source === 'azure' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'}">${t.source || 'mock'}</span>
+                        </div>
+                    </div>
+                    <div class="text-sm text-gray-600 mb-2">${t.transcription}</div>
+                    <div class="text-xs text-gray-500">${formatDate(t.createdAt)}</div>
+                </div>
+            `).join('');
+            
+            listDiv.innerHTML = html;
+        }
+
+        function updatePagination(pagination) {
+            if (!pagination) return;
+            
+            currentPage = pagination.page;
+            totalPages = pagination.totalPages;
+            
+            const paginationDiv = document.getElementById('pagination');
+            const infoDiv = document.getElementById('paginationInfo');
+            const prevBtn = document.getElementById('prevPage');
+            const nextBtn = document.getElementById('nextPage');
+            
+            infoDiv.textContent = `Page ${currentPage} of ${totalPages} (${pagination.total} total)`;
+            
+            prevBtn.disabled = currentPage <= 1;
+            nextBtn.disabled = currentPage >= totalPages;
+            
+            if (pagination.total > pagination.limit) {
+                paginationDiv.classList.remove('hidden');
+            } else {
+                paginationDiv.classList.add('hidden');
+            }
+        }
+
+        function changePage(direction) {
+            const newPage = currentPage + direction;
+            if (newPage >= 1 && newPage <= totalPages) {
+                currentPage = newPage;
+                loadTranscriptions();
+            }
+        }
+    </script>
+</body>
+</html>
